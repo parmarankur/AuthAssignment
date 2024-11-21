@@ -1,0 +1,98 @@
+- Run the below command if jwt package is not installed locally, and build is required.
+go get -u github.com/golang-jwt/jwt/v5
+
+- Run the below commands if required.
+go mod init ankur; go mod tidy; go build; 
+
+- To run the server
+go run main.go
+
+- Below are the curl commands with different testcases to test the program 
+TestCases
+1. Sign Up
+ (a) Successful creation.
+   curl --header "Content-Type: application/json" --request POST --data '{"username":"user1", "password":"BigTime"}' http://localhost:8484/signup -v
+
+ (b) Failure: Username already exist. Run the above command again.
+
+2. Sign in and token generation
+ (a) Successful sign in
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","password":"BigTime"}' http://localhost:8484/signin -v
+
+    // This will return a token copy that for further test cases
+
+ (b) Wrong username, user does not exist
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user2","password":"pass1"}' http://localhost:8484/signin -v
+
+ (c) Wrong password
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","password":"password1"}' http://localhost:8484/signin -v
+
+3. Authorization of token
+ (a) Successful authorization
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"....."}' http://localhost:8484/auth -v
+
+   // Replace the 5 dots in the above command with the token received(leaving the % sign at last if using zsh) in the last successfull sign In.
+
+ (b) Unauthorized: Token expired
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTE2MzMsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.4M2O3X5ci-vQ0OdFhrngnHtnzgGSg-5Z4mc6eu1vD6g"}' http://localhost:8484/auth -v
+
+ (c) Unauthorized: Invalid token
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTI3MTYsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.a8sBJsj2lNaAA6-9AouxAyIvzlexMaMIhPJZ1Q64Bgs"}' http://localhost:8484/auth -v
+
+ (d) Unauthorized: Token revoked.
+   Run the same command in 3.(a) after revoking the same token using the command in 4.(a)
+
+4. Revocation of token 
+
+First run the testcases in 5. as after revoking the token we may not be able to use the same token to refresh, or we may have to create another token.
+
+ (a) Valid token, can be revoked. 
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"....."}' http://localhost:8484/revoke -v
+
+
+
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTY3MzMsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.DAgKFtX3nFggECuAfXHUeEq0MsfcZnA8p86AlBYpH1M"}' http://localhost:8484/revoke -v
+
+    // Replace the 5 dots in the above command with the token received(leaving the % sign at last if using zsh) in the last successfull sign In that is testcases 2.(a)
+
+    // Run the same command by replacing the 5 dots with the new refreshed token to check if it is revoked.
+ 
+ (b) Revoke failed, token already revoked.
+    Run the same command in testcase 4.(a) again after it is successful
+
+ (c) Invalid token cannot be revoked.
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTI3MTYsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.a8sBJsj2lNaAA6-9AouxAyIvzlexMaMIhPJZ1Q64Bgs"}' http://localhost:8484/revoke -v
+
+ (d) Token expired, no need to revoke the token.
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTE2MzMsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.4M2O3X5ci-vQ0OdFhrngnHtnzgGSg-5Z4mc6eu1vD6g"}' http://localhost:8484/revoke -v
+    
+5. Mechanism to refresh a token. 
+ (a) Valid token, successful refresh
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"....."}' http://localhost:8484/auth -v
+
+    // Replace the 5 dots in the above command with the token received(leaving the % sign at last if using zsh) in the last successfull sign In that is testcases 2.(a)
+
+    // Run the auth command in 2 by replacing the 5 dots with the new refreshed token to check if it works.
+
+(b)  Expired token, cannot be refreshed
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTE2MzMsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.4M2O3X5ci-vQ0OdFhrngnHtnzgGSg-5Z4mc6eu1vD6g"}' http://localhost:8484/refresh -v
+
+(c) Invalid token, cannot be refreshed
+    curl --header "Content-Type: application/json" --request POST --data '{"username":"user1","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzIyMTI3MTYsImlzcyI6ImFua3VyIiwidXNlcm5hbWUiOiJ1c2VyMSJ9.a8sBJsj2lNaAA6-9AouxAyIvzlexMaMIhPJZ1Q64Bgs"}' http://localhost:8484/refresh -v
+   
+(d) Token revoked cannot be refreshed
+ Run the command in 5.(a) after revoking the same token using the command in 4.(a)
+    
+
+Assumptions
+- Taking a fixed expiration time of 15 minutes for JWT token expiration, that can be configured as requred.
+ 
+- As it is recommended to use JWT tokens for authentication, I am assuming that immediate revokation of tokens is a rare/less frequent use case. Hence based on this the solution will maintain a revocation list containing all revoked tokens. This list is based on token, not user.
+Token revokation list is a map that contains token and time it was revoked. As our tokens are short lived,
+this list can be cleared by writing a small service that removed all revoked token that are
+older than 15 minutes(Which is our fixed token expiration time), as they would have anyways expired.
+This will keep our revocation list from growing indefinitely.
+
+- As mentioned 'Client should be able to renew the token before it expires', assuming here that this is a different use case than regular refresh tokens with longer lifespans. Here we want to renew the acess token before it expires when requested by clent, while refresh token can be used to fetch new access token even after expiry of access tokens.
+
+- Users are stored in memory store, hence every time this program is run new users needs to be created.
